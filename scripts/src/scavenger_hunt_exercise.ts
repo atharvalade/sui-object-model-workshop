@@ -38,32 +38,45 @@ const main = async () => {
    *
    * Create a new Transaction instance from the @mysten/sui/transactions module.
    */
+  const tx = new Transaction();
 
   /**
    * Task 2:
    *
    * Create a new key using the `key::new` function.
    */
+  const key = tx.moveCall({
+    target: `${PACKAGE_ID}::key::new`,
+  });
 
   /**
    * Task 3:
    *
    * Set the key code correctly using the `key::set_code` function.
    */
+  tx.moveCall({
+    target: `${PACKAGE_ID}::key::set_code`,
+    arguments: [key, tx.pure.u64(745223)],
+  });
 
   /**
    * Task 4:
    *
    * Use the key to withdraw the `SUI` coin from the vault using the `vault::withdraw` function.
    */
-  
+  const [coin] = tx.moveCall({
+    target: `${PACKAGE_ID}::vault::withdraw`,
+    typeArguments: ['0x2::sui::SUI'],
+    arguments: [tx.object(VAULT_ID), key],
+  });
 
   /**
    * Task 5:
    *
    * Transfer the `SUI` coin to your account.
    */
-
+  const suiAddress = keypair.getPublicKey().toSuiAddress();
+  tx.transferObjects([coin], suiAddress);
 
   /**
    * Task 6:
@@ -75,7 +88,26 @@ const main = async () => {
    * Resources:
    * - Observing transaction results: https://sdk.mystenlabs.com/typescript/transaction-building/basics#observing-the-results-of-a-transaction
    */
+  const result = await suiClient.signAndExecuteTransaction({
+    signer: keypair,
+    transaction: tx,
+    options: {
+      showEffects: true,
+      showObjectChanges: true,
+      showBalanceChanges: true,
+    },
+  });
 
+  console.log("\n🎉 Scavenger Hunt Completed Successfully!");
+  console.log(`Digest: ${result.digest}`);
+  console.log(`\nView transaction at: https://suiscan.xyz/testnet/tx/${result.digest}`);
+  
+  if (result.balanceChanges) {
+    console.log("\nBalance Changes:");
+    result.balanceChanges.forEach((change) => {
+      console.log(`  ${change.coinType}: ${change.amount}`);
+    });
+  }
 
   /**
    * Task 7: Run the script with the command below and ensure it works!
